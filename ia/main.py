@@ -18,7 +18,7 @@ if not api_key:
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=api_key,
-    temperature=0,
+    temperature=0.5,
     convert_system_message_to_human=True
 )
 
@@ -86,6 +86,8 @@ REGRAS IMPORTANTES:
 - Mensagem curta.
 - Entre 300 e 700 caracteres.
 - Deve parecer conversa real de WhatsApp.
+- Considere as preferências e instruções presentes na mensagem do cliente.
+- Adapte o formato da resposta ao que foi solicitado.
 """
 
 
@@ -141,12 +143,15 @@ def detectar_intencao(mensagem_usuario: str):
             "intent": "DESCONHECIDO"
         }
 
-def gerar_analise(dados_equipamento: dict):
+def gerar_analise(dados_equipamento: dict, message: str):
     mensagens = [
         SystemMessage(content=PROMPT_ANALISE),
-        HumanMessage(
-            content=f"Interprete estes dados do equipamento: {dados_equipamento}"
-        )
+        HumanMessage(content=f"""
+            Mensagem do cliente: {message}
+            Dados do equipamento: {dados_equipamento}
+
+        Responda considerando exatamente o que o cliente pediu.
+        """)
     ]
     resposta = llm.invoke(mensagens)
     return resposta.content
@@ -188,8 +193,8 @@ def montar_resposta_whatsapp(mensagem_usuario: str):
 
         try:
             dados = buscar_dados_equipamento(device_id)
-            analise = gerar_analise(dados)
-            return f"{obter_saudacao()}! {analise}"
+            analise = gerar_analise(dados, mensagem_usuario)
+            return f"{analise}"
 
         except Exception:
             return "Não foi possível consultar os dados do equipamento neste momento."
